@@ -29,26 +29,23 @@ def get_allowed_channels():
     return [channel_id.strip() for channel_id in allowed_channels_str.split(",")]
 
 @app.command("/2fa")
-def generate_2fa(ack, command, say):
+def generate_2fa(ack, command, respond):
     """
     Generate a 2FA token for the specified service
     Usage: /2fa [service_name]
     """
-    # Acknowledge the command request immediately
-    ack()
-    
-    # Get the user ID and channel ID
-    user_id = command["user_id"]
+    # Get the channel ID
     channel_id = command["channel_id"]
     
     # Check if the channel is allowed
     allowed_channels = get_allowed_channels()
     if allowed_channels and channel_id not in allowed_channels:
-        say(
-            text="Sorry, this command is not available in this channel.",
-            user=user_id
-        )
+        # Acknowledge with error message
+        ack("Sorry, this command is not available in this channel.")
         return
+        
+    # Acknowledge the command request
+    ack()
     
     # Get the text after the command (service name)
     text = command.get("text", "").strip().lower()
@@ -61,23 +58,16 @@ def generate_2fa(ack, command, say):
         # List available services
         if services:
             service_list = ", ".join(services.keys())
-            say(
-                text=f"Please specify a service: `/2fa [service_name]`\nAvailable services: {service_list}",
-                user=user_id
-            )
+            # Use respond for slash commands which creates ephemeral messages by default
+            respond(f"Please specify a service: `/2fa [service_name]`\nAvailable services: {service_list}")
         else:
-            say(
-                text="No 2FA services configured. Add environment variables starting with '2FA_TOKEN_'.",
-                user=user_id
-            )
+            # Use respond for slash commands which creates ephemeral messages by default
+            respond("No 2FA services configured. Add environment variables starting with '2FA_TOKEN_'.")
         return
     
     # Check if the requested service exists
     if text not in services:
-        say(
-            text=f"Service '{text}' not found. Available services: {', '.join(services.keys())}",
-            user=user_id
-        )
+        respond(f"Service '{text}' not found. Available services: {', '.join(services.keys())}")
         return
     
     # Generate the TOTP token for the requested service
@@ -86,13 +76,10 @@ def generate_2fa(ack, command, say):
     token = totp.now()
     
     # Send the token (only visible to the user who triggered the command)
-    say(
-        text=f"Your 2FA token for {text} is: `{token}`",
-        user=user_id  # This makes the response private to the user
-    )
+    respond(f"Your 2FA token for {text} is: `{token}`")
 
 @app.event("app_mention")
-def handle_mention(say, event):
+def handle_mention(client, event):
     """Handle when the app is mentioned in a channel"""
     channel_id = event.get("channel")
     user_id = event.get("user")
@@ -103,7 +90,11 @@ def handle_mention(say, event):
         # Don't respond in non-allowed channels
         return
         
-    say(f"Hello <@{user_id}>! Use `/2fa` to generate a 2FA token.")
+    # Send a DM to the user instead of responding in the channel
+    client.chat_postMessage(
+        channel=user_id,  # This sends a direct message
+        text="Hello! Use `/2fa` to generate a 2FA token."
+    )
 
 if __name__ == "__main__":
     # Check if required environment variables are set
