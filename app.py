@@ -17,8 +17,34 @@ def get_available_services():
     for key, value in os.environ.items():
         if key.startswith("2FA_TOKEN_"):
             service_name = key[10:].lower()  # Remove "2FA_TOKEN_" prefix and lowercase
-            services[service_name] = value
+            # Clean the token to ensure Base32 compatibility
+            cleaned_token = clean_token_for_base32(value)
+            services[service_name] = cleaned_token
     return services
+
+def clean_token_for_base32(token):
+    """
+    Clean a token to make it compatible with Base32 format.
+    - Removes spaces and special characters
+    - Converts to uppercase
+    - Pads to valid length if needed
+    """
+    # Remove spaces and non-alphanumeric characters
+    cleaned = ''.join(c for c in token if c.isalnum())
+    
+    # Convert to uppercase (Base32 is uppercase)
+    cleaned = cleaned.upper()
+    
+    # Filter to only valid Base32 characters (A-Z, 2-7)
+    cleaned = ''.join(c for c in cleaned if c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
+    
+    # Base32 encoding requires the length to be a multiple of 8
+    # Pad with 'A' (arbitrary valid character) if needed
+    remainder = len(cleaned) % 8
+    if remainder != 0:
+        cleaned += 'A' * (8 - remainder)
+    
+    return cleaned
 
 def get_allowed_channels():
     """Get list of allowed channel IDs from environment variable"""
@@ -72,11 +98,15 @@ def generate_2fa(ack, command, respond):
     
     # Generate the TOTP token for the requested service
     secret = services[text]
-    totp = pyotp.TOTP(secret)
-    token = totp.now()
-    
-    # Send the token (only visible to the user who triggered the command)
-    respond(f"Your 2FA token for {text} is: `{token}`")
+    try:
+        totp = pyotp.TOTP(secret)
+        token = totp.now()
+        
+        # Send the token (only visible to the user who triggered the command)
+        respond(f"Your 2FA token for {text} is: `{token}`")
+    except Exception as e:
+        respond(f"Error generating token: {str(e)}. Please check your token format - it should be Base32 compatible.")
+
 
 @app.event("app_mention")
 def handle_mention(client, event):
