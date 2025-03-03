@@ -20,6 +20,14 @@ def get_available_services():
             services[service_name] = value
     return services
 
+def get_allowed_channels():
+    """Get list of allowed channel IDs from environment variable"""
+    allowed_channels_str = os.environ.get("ALLOWED_CHANNEL_IDS", "")
+    if not allowed_channels_str:
+        return []
+    
+    return [channel_id.strip() for channel_id in allowed_channels_str.split(",")]
+
 @app.command("/2fa")
 def generate_2fa(ack, command, say):
     """
@@ -29,8 +37,18 @@ def generate_2fa(ack, command, say):
     # Acknowledge the command request immediately
     ack()
     
-    # Get the user ID who triggered the command
+    # Get the user ID and channel ID
     user_id = command["user_id"]
+    channel_id = command["channel_id"]
+    
+    # Check if the channel is allowed
+    allowed_channels = get_allowed_channels()
+    if allowed_channels and channel_id not in allowed_channels:
+        say(
+            text="Sorry, this command is not available in this channel.",
+            user=user_id
+        )
+        return
     
     # Get the text after the command (service name)
     text = command.get("text", "").strip().lower()
@@ -76,7 +94,16 @@ def generate_2fa(ack, command, say):
 @app.event("app_mention")
 def handle_mention(say, event):
     """Handle when the app is mentioned in a channel"""
-    say(f"Hello <@{event['user']}>! Use `/2fa` to generate a 2FA token.")
+    channel_id = event.get("channel")
+    user_id = event.get("user")
+    
+    # Check if the channel is allowed
+    allowed_channels = get_allowed_channels()
+    if allowed_channels and channel_id not in allowed_channels:
+        # Don't respond in non-allowed channels
+        return
+        
+    say(f"Hello <@{user_id}>! Use `/2fa` to generate a 2FA token.")
 
 if __name__ == "__main__":
     # Check if required environment variables are set
@@ -87,6 +114,13 @@ if __name__ == "__main__":
         print("Error: SLACK_APP_TOKEN environment variable is required")
         exit(1)
         
+    # Log channel restrictions
+    allowed_channels = get_allowed_channels()
+    if allowed_channels:
+        print(f"Bot restricted to these channel IDs: {', '.join(allowed_channels)}")
+    else:
+        print("No channel restrictions specified. Bot will work in all channels.")
+    
     # Get available services
     services = get_available_services()
     if not services:

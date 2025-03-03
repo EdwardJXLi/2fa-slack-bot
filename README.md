@@ -6,13 +6,13 @@ A simple Slack app that generates 2FA tokens on demand directly within Slack usi
 
 - Generate TOTP (Time-based One-Time Password) tokens directly in Slack
 - Support for multiple services configured through environment variables
+- Limit responses to specific slack channels
 - Private responses (only visible to the requesting user)
 - Easy to deploy locally or with Docker
-- Lightweight and minimal dependencies
 
 ## How It Works
 
-Users can trigger the app by typing `/2fa [service_name]` in any Slack channel where the app is installed. For example:
+Users can trigger the app by typing `/2fa [service_name]` in any Slack approved channel where the app is installed. For example:
 
 - `/2fa` - Lists all available services
 - `/2fa github` - Generates a token for GitHub
@@ -78,6 +78,7 @@ SLACK_APP_TOKEN=xapp-your-app-token
 2FA_TOKEN_GITHUB=your-github-totp-secret
 2FA_TOKEN_EMAIL=your-email-totp-secret
 2FA_TOKEN_AWS=your-aws-totp-secret
+ALLOWED_CHANNEL_IDS=C012345ABCDE,C098765FGHIJ  # List of allowed channels (optional)
 # Add more services as needed
 ```
 
