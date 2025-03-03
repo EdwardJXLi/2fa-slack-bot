@@ -6,5 +6,3 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    volumes:
-      - ./app.py:/app/app.py
