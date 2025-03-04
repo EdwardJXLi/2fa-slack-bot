@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   slack-2fa-app:
     build: .
