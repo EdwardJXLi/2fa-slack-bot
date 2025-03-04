@@ -2,6 +2,8 @@
 
 A simple Slack app that generates 2FA tokens on demand directly within Slack using the `/2fa` command. The app supports multiple services and delivers tokens privately to the requesting user.
 
+> **🤖 Ethical AI Notice:** This project was by in large part generated with AI. 
+
 ## Features
 
 - Generate TOTP (Time-based One-Time Password) tokens directly in Slack
